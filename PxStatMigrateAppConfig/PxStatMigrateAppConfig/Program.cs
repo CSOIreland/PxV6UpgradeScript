@@ -264,7 +264,7 @@ if (Console.ReadLine().ToUpper().Equals("Y"))
 
     //Get details of the config and schema files
     Console.WriteLine("Getting config details. When you have finished entering configurations, just press enter and the application" +
-        " will continue to the next step");
+        " will continue to the next step. You may need to create an alternative (up to date) version of the config file(s) first. This is definitely necessary for server.config.");
     Console.WriteLine();
     string jsonFile = null;
     string schemaFile = null;
