@@ -127,7 +127,7 @@ namespace PxStatMigrateAppConfig
         /// <param name="configName"></param>
         /// <param name="configValue"></param>
         /// <returns></returns>
-        internal static bool WriteAppConfigToDatabase(string connectionString, string configName, string configValue)
+        internal static bool WriteAppConfigToDatabase(string connectionString, string configName, string configValue,string ccnUsername)
         {
             try
             {
@@ -143,6 +143,7 @@ namespace PxStatMigrateAppConfig
                         queryCreateConfig.Parameters.Add("@appkey", SqlDbType.VarChar, 200).Value = configName;
                         queryCreateConfig.Parameters.Add("@appvalue", SqlDbType.VarChar, -1).Value = configValue;
                         queryCreateConfig.Parameters.Add("@appdescription", SqlDbType.VarChar, -1).Value = "Json config for " + configName;
+                        queryCreateConfig.Parameters.Add("@userName", SqlDbType.VarChar, 256).Value = ccnUsername;
 
 
                         openCon.Open();
@@ -188,7 +189,7 @@ namespace PxStatMigrateAppConfig
         }
 
 
-        internal static bool WriteApiConfigToDatabase(string connectionString, string configName, string configValue, bool sensitive = false)
+        internal static bool WriteApiConfigToDatabase(string connectionString, string configName, string configValue,string ccnUsername, bool sensitive = false)
         {
             try
             {
@@ -223,6 +224,7 @@ namespace PxStatMigrateAppConfig
                         queryCreateConfig.Parameters.Add("@apikey", SqlDbType.VarChar, 200).Value = configName;
                         queryCreateConfig.Parameters.Add("@apivalue", SqlDbType.VarChar, -1).Value = configValue;
                         queryCreateConfig.Parameters.Add("@apidescription", SqlDbType.VarChar, -1).Value = "Json config for " + configName;
+                        queryCreateConfig.Parameters.Add("@userName", SqlDbType.NVarChar).Value = ccnUsername;
 
                         if (sensitive)
                         {
@@ -240,7 +242,7 @@ namespace PxStatMigrateAppConfig
             catch (Exception e)
             {
                 Console.WriteLine("Database insert error: " + e.Message + "\n");
-                return false;
+                throw e;
             }
         }
 
@@ -303,7 +305,7 @@ namespace PxStatMigrateAppConfig
             catch (Exception e)
             {
                 Console.WriteLine("Error creating new app config version: " + e.Message + "\n");
-                return false;
+                throw e;
             }
         }
 
@@ -367,7 +369,7 @@ namespace PxStatMigrateAppConfig
             catch (Exception e)
             {
                 Console.WriteLine("Error creating new api config version: " + e.Message + "\n");
-                return -1;
+                throw e;
             }
         }
 
@@ -397,7 +399,7 @@ namespace PxStatMigrateAppConfig
                                 catch (SqlException ex)
                                 {
                                     string spError = commandString.Length > 100 ? commandString.Substring(0, 100) + " ...\n..." : commandString;
-                                    return false;
+                                    throw ex;
                                 }
                             }
                         }
@@ -407,8 +409,7 @@ namespace PxStatMigrateAppConfig
             }
             catch (Exception ex)
             {
-
-                return false;
+                throw ex;
             }
         }
 
@@ -465,7 +466,7 @@ namespace PxStatMigrateAppConfig
             catch (Exception ex)
             {
                 Console.WriteLine("Error reading config file " + folderPath + ": " + ex.Message);
-                return null;
+                throw ex;
             }
             return config;
         }
@@ -512,7 +513,7 @@ namespace PxStatMigrateAppConfig
             catch (Exception ex)
             {
                 Console.WriteLine("Error reading config file " + folderPath + ": " + ex.Message);
-                return null;
+                throw ex;
             }
             return config;
         }
@@ -659,7 +660,7 @@ namespace PxStatMigrateAppConfig
             catch (Exception e)
             {
                 Console.WriteLine("Error converting appsettings: " + e.ToString());
-                return null;
+                throw e;
             }
 
             IDictionary<string, object> appConfigs = (IDictionary<string, object>)dJson["APP_Config"];
@@ -711,8 +712,8 @@ namespace PxStatMigrateAppConfig
             } 
             catch(Exception ex)
             { 
-                Console.WriteLine("Error reading web config: " + ex.Message);   
-                return string.Empty;    
+                Console.WriteLine("Error reading web config: " + ex.Message);
+                throw ex;
             } 
 
         }
@@ -752,7 +753,7 @@ namespace PxStatMigrateAppConfig
             catch (Exception ex)
             {
                 Console.WriteLine("Error reading web config: " + ex.Message);
-                return string.Empty;
+                throw ex;
             }
 
         }
@@ -823,7 +824,7 @@ namespace PxStatMigrateAppConfig
             catch (Exception ex) 
             {
                 Console.WriteLine("Error getting latest version: " + ex.Message);
-                return 0;
+                throw ex;
             }
             return version;
         }
@@ -838,11 +839,12 @@ namespace PxStatMigrateAppConfig
             } 
             catch (Exception ex) 
             { 
-                Console.WriteLine("Error writing to " +  filePath + ": " + ex.Message);   
+                Console.WriteLine("Error writing to " +  filePath + ": " + ex.Message);
+                throw ex;
             }
         }
 
-        internal static void RunApiUpgradeJsonScript(string script,string connectionString, decimal version)
+        internal static void RunApiUpgradeJsonScript(string script,string connectionString, decimal version,string ccnUsername)
         {
             if (!string.IsNullOrEmpty(script))
             {
@@ -853,18 +855,20 @@ namespace PxStatMigrateAppConfig
                     {
                         foreach (DataRow dr in ds.Tables[0].Rows)
                         {
+
                             
                                 string? key = dr["key"] != DBNull.Value ? (string)dr["key"] : null;
                                 string? value = dr["value"] != DBNull.Value ? (string)dr["value"] : null;
                                 string? action = dr["action"] != DBNull.Value ? (string)dr["action"] : null;
                                 bool? sensitive = dr["sensitive"] != DBNull.Value ? (bool)dr["sensitive"] : null;
                                 string? description = dr["description"] != DBNull.Value ? (string)dr["description"] : null;
-                                if (action != null)
+                            if(key!=null) Console.WriteLine("Updating key: " + key);
+                            if (action != null)
                                 {
                                     switch (action.ToLower())
                                     {
                                         case "append":
-                                            RunApiAppend(version, connectionString, key, value, description, sensitive);
+                                            RunApiAppend(version, connectionString, key, value,ccnUsername, description, sensitive);
                                             break;
                                         case "updatekey":
                                             RunApiUpdateKey(version, connectionString, key, value);
@@ -891,7 +895,7 @@ namespace PxStatMigrateAppConfig
             }
         }
 
-        internal static void RunApiAppend(decimal version,string connectionString, string key, string value, string description="", bool? sensitive=false)
+        internal static void RunApiAppend(decimal version,string connectionString, string key, string value,string ccnUsername, string description="", bool? sensitive=false)
         {
             if(key == null) 
             { 
@@ -920,6 +924,7 @@ namespace PxStatMigrateAppConfig
                         qryWriteApi.Parameters.Add("@apivalue", SqlDbType.NVarChar).Value = value;
                         qryWriteApi.Parameters.Add("@apidescription", SqlDbType.NVarChar).Value = description;
                         qryWriteApi.Parameters.Add("@apisensitivevalue", SqlDbType.Bit).Value = sensitive == null ? false : sensitive;
+                        qryWriteApi.Parameters.Add("@userName", SqlDbType.NVarChar).Value = ccnUsername;
 
                         qryWriteApi.ExecuteNonQuery();
                         openCon.Close();
@@ -929,6 +934,7 @@ namespace PxStatMigrateAppConfig
             catch(Exception ex) 
             {
                 Console.WriteLine("Can't append record for key " + key + " to the database. " + ex.Message );
+                throw ex;
             }
 
         }
@@ -969,6 +975,7 @@ namespace PxStatMigrateAppConfig
             catch(Exception ex) 
             {
                 Console.WriteLine("Can't update key " + key + ". " + ex.Message);
+                throw ex;
             }
         }
 
@@ -1014,6 +1021,7 @@ namespace PxStatMigrateAppConfig
             catch (Exception ex) 
             {
                 Console.WriteLine("Can't update API value for key " + key + ". " + ex.Message);
+                throw ex;
             }
         }
 
@@ -1054,6 +1062,7 @@ namespace PxStatMigrateAppConfig
             catch (Exception ex) 
             {
                 Console.WriteLine("Can't update flag for key " + key + ". " + ex.Message);
+                throw ex;
             }
         }
 
@@ -1086,6 +1095,7 @@ namespace PxStatMigrateAppConfig
             catch (Exception ex) 
             { 
                 Console.WriteLine("Can't delete API setting for key " + key + ". " + ex.Message);
+                throw ex;
             }
         }
     }

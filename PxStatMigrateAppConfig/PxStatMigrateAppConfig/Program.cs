@@ -11,6 +11,7 @@ string dbName;
 string server;
 string userName;
 string password;
+string ccnUsername;
 Dictionary<string, string> configs = new();
 Dictionary<string, string> schemas = new();
 string connectionString;
@@ -20,11 +21,14 @@ string baseFolder = null;
 bool frontierChange = false; //To indicate to several functions if this a change from pre 6.0.0 to 6.0.0 or later
 string startVersion=null;
 
+//Get a pxstat username
+Console.WriteLine("Please supply a valid PxStat admin username. Your app config changes will be shown against this name");
+ccnUsername = Console.ReadLine();
 
 //Get database and login details
 Console.WriteLine("Please enter the database details:");
 Console.WriteLine("");
-Console.WriteLine("Please enter the server name or ip address");
+Console.WriteLine("Please enter the database server name or ip address");
 server= Console.ReadLine();
 if (string.IsNullOrEmpty(server))
 {
@@ -55,41 +59,52 @@ else //Integrated Security
     connectionString = "Server=" + server + ";Initial Catalog=" + dbName + ";Integrated Security=SSPI;Persist Security Info=False;Column Encryption Setting=enabled;Trust Server Certificate=true";
 Console.WriteLine();
 
+//Run the upgrade ddl
+Console.WriteLine("Please enter the path to your database folder, e.g \"C:\\Development\\6.0.0\\db\"");
+baseFolder = Console.ReadLine();
+if (String.IsNullOrEmpty(baseFolder))
+{
+    Console.WriteLine("Invalid folder name, closing application");
+    System.Environment.Exit(0);
+}
+
+else if (!baseFolder.Substring(baseFolder.Length - 1, 1).Equals("\\"))
+    baseFolder = baseFolder + "\\";
+
+Dictionary<string, string> replacements = new();
+replacements.Add("$(DB_DATA)", dbName);
+
+
+//Run the all upgrade scripts older than the one you're migrating from in succession
+Console.WriteLine("Please enter the version of pxstat from which you are upgrading");
+startVersion = Console.ReadLine();
+upgradeFrom = startVersion;
+if (!upgradeFrom.Substring(upgradeFrom.Length - 4, 4).Equals(".sql"))
+    upgradeFrom = upgradeFrom + ".sql";
+List<string> upgradeScripts = Helper.GetUpgradeList(baseFolder + "\\" + "scripts", upgradeFrom);
+
+if (upgradeFrom.CompareTo("6.0.0") < 0) frontierChange = true;
+Console.WriteLine("Frontier change: " + frontierChange);
+
+
 Console.WriteLine("Do you wish to run a full database upgrade? y/n");
 if (Console.ReadLine().ToUpper() == "Y")
 {
 
-    //Run the upgrade ddl
-    Console.WriteLine("Please enter the path to your database folder, e.g \"C:\\Development\\6.0.0\\db\"");
-    baseFolder = Console.ReadLine();
-    if (String.IsNullOrEmpty(baseFolder))
-    {
-        Console.WriteLine("Invalid folder name, closing application");
-        System.Environment.Exit(0);
-    }
 
-    else if (!baseFolder.Substring(baseFolder.Length - 1, 1).Equals("\\"))
-        baseFolder = baseFolder + "\\";
 
-    Dictionary<string, string> replacements = new();
-    replacements.Add("$(DB_DATA)", dbName);
 
-    //Run the all upgrade scripts older than the one you're migrating from in succession
-    Console.WriteLine("Please enter the version of pxstat from which you are upgrading");
-    startVersion = Console.ReadLine();
-    upgradeFrom = startVersion;
-    if (!upgradeFrom.Substring(upgradeFrom.Length - 4, 4).Equals(".sql"))
-        upgradeFrom = upgradeFrom + ".sql";
-    List<string> upgradeScripts = Helper.GetUpgradeList(baseFolder + "\\" + "scripts", upgradeFrom);
-
-    if (upgradeFrom.CompareTo("6.0.0")<0) frontierChange = true;
-    Console.WriteLine("Frontier change: " + frontierChange);
 
     foreach (string script in upgradeScripts)
     {
         string sString = Helper.GetFileString(script, replacements);
         if (Helper.ExecuteSql(connectionString, sString))
             Console.WriteLine(script + " run ok");
+        else
+        {
+            Console.WriteLine(script + " error!");
+            return;
+        }
     }
 
     Console.WriteLine();
@@ -137,59 +152,44 @@ if (Console.ReadLine().ToUpper() == "Y")
 //There must be a configuration version corresponding to the configurations you are entering.
 //If you need to create one, you will need to go through this step
 
-Console.WriteLine();
-Console.WriteLine("Do you wish to create a new API config version in the database? y/n");
+//Console.WriteLine();
+//Console.WriteLine("An API config will have been created by default. However if you wish to create an entirely new one, choose this option");
+//Console.WriteLine("Do you wish to create a new API config version in the database? y/n");
 
-string yn = Console.ReadLine();
-if (!String.IsNullOrEmpty(yn))
-{
-    if (yn.ToUpper().Equals("Y"))
-    {
-        if (Helper.CreateNewApiConfigVersion(connectionString)<=0)
-        {
-            Console.WriteLine("Unable to create a new API config version. Press any key to finish.");
-            Console.Read();
-            System.Environment.Exit(0);
-        }
-    }
-}
+//string yn = Console.ReadLine();
+//if (!String.IsNullOrEmpty(yn))
+//{
+//    if (yn.ToUpper().Equals("Y"))
+//    {
+//        if (Helper.CreateNewApiConfigVersion(connectionString)<=0)
+//        {
+//            Console.WriteLine("Unable to create a new API config version. Press any key to finish.");
+//            Console.Read();
+//            System.Environment.Exit(0);
+//        }
+//    }
+//}
 
-if (frontierChange)
-{
+
     Console.WriteLine();
     Console.WriteLine("Do you wish to create an API config from the web config? y/n");
     if (Console.ReadLine().ToUpper().Equals("Y"))
     {
-        Console.WriteLine("Please enter the path of the web.config file from which you wish to read");
+        Console.WriteLine("Please enter the path of the web.config file from which you wish to read, e.g. C:\\PxStat\\web.config");
         webConfigPath = Console.ReadLine();
         if (webConfigPath != null)
         {
             Dictionary<string, string> webConfigs = Helper.GetWebConfig(webConfigPath);
             foreach (var webConfig in webConfigs)
             {
-                Helper.WriteApiConfigToDatabase(connectionString, webConfig.Key, webConfig.Value);
+                Helper.WriteApiConfigToDatabase(connectionString, webConfig.Key, webConfig.Value,ccnUsername);
                 Console.WriteLine(webConfig.Key + ":" + webConfig.Value);
             }
         }
     }
 
-    Console.WriteLine();
-    Console.WriteLine("Do you wish to add additional API configs from another file? y/n");
-    if (Console.ReadLine().ToUpper().Equals("Y"))
-    {
-        Console.WriteLine("Please enter the full path of the additional config file (xml only)");
-        string plusConfigFileName = Console.ReadLine();
-        if (plusConfigFileName != null)
-        {
-            Dictionary<string, string> plusConfigs = Helper.GetWebConfig(plusConfigFileName);
-            foreach (var item in plusConfigs)
-            {
-                Helper.WriteApiConfigToDatabase(connectionString, item.Key, item.Value);
-                Console.WriteLine(item.Key + ":" + item.Value);
-            }
-        }
-
-    }
+if (frontierChange)
+{
 
     Console.WriteLine();
     Console.WriteLine("Do you wish to create a Firebase Key API config entry from a Firebase.json file? y/n");
@@ -202,7 +202,7 @@ if (frontierChange)
             string firebaseToken = Helper.GetFileString(firebaseFileName);
             KeyValuePair<string,string> firebaseConfig = new KeyValuePair<string, string>( "API_FIREBASE_CREDENTIAL",firebaseToken);
             
-            Helper.WriteApiConfigToDatabase(connectionString, firebaseConfig.Key, firebaseConfig.Value);
+            Helper.WriteApiConfigToDatabase(connectionString, firebaseConfig.Key,  firebaseConfig.Value,ccnUsername);
             Console.WriteLine(firebaseConfig.Key + ":" + firebaseConfig.Value);
             
         }
@@ -211,13 +211,14 @@ if (frontierChange)
 }
 
 Console.WriteLine();
-Console.WriteLine("Do you wish to run all of the json config upgrade scripts after the chosen version to the current version? y/n");
+Console.WriteLine("Do you wish to run all of the json config upgrade scripts after the chosen version to the current version of the API config? y/n");
 if (Console.ReadLine().ToUpper().Equals("Y"))
 {
-    if(baseFolder==null)
+    if (baseFolder == null)
     {
         Console.WriteLine("Please enter the path to your database folder, e.g \"C:\\Development\\6.0.0\\db\"");
         baseFolder = Console.ReadLine();
+    }
         if (!string.IsNullOrEmpty(baseFolder))
         {
             if (baseFolder.Length > 1)
@@ -243,22 +244,22 @@ if (Console.ReadLine().ToUpper().Equals("Y"))
                 
             }
 
-            List<string> apiScripts = Helper.GetUpgradeList(baseFolder + "\\Config\\Api", upgradeFrom);
+            List<string> apiScripts = Helper.GetUpgradeList(baseFolder + "Config\\Api", upgradeFrom);
             foreach(var script in apiScripts)
             {
                 string scriptString=Helper.GetFileString(script);
-                Helper.RunApiUpgradeJsonScript(scriptString,connectionString,version);
+                Helper.RunApiUpgradeJsonScript(scriptString,connectionString,version,ccnUsername);
             }
 
         }
-    }
+    
 
 
 }
 
 
     Console.WriteLine() ;
-Console.WriteLine("Do you wish to create an APP config? y/n");
+Console.WriteLine("Do you wish to create an APP config on the database? y/n");
 if (Console.ReadLine().ToUpper().Equals("Y"))
 {
 
@@ -309,31 +310,31 @@ if (Console.ReadLine().ToUpper().Equals("Y"))
     } while (true);
 
     //There must be a configuration version corresponding to the configurations you are entering.
-    //If you need to create one, you will need to go through this step
+    //If you need to create a new one, you will need to go through this step
     
-    Console.WriteLine();
-    Console.WriteLine("Do you wish to create a new app config version in the database? y/n");
+    //Console.WriteLine();
+    //Console.WriteLine("An app config version has already been created for you. However, do you wish to create a new app config version in the database? y/n");
 
-    yn = Console.ReadLine();
-    if (!String.IsNullOrEmpty(yn))
-    {
-        if (yn.ToUpper().Equals("Y"))
-        {
+    //string yn = Console.ReadLine();
+    //if (!String.IsNullOrEmpty(yn))
+    //{
+    //    if (yn.ToUpper().Equals("Y"))
+    //    {
             
-            if (!Helper.CreateNewAppConfigVersion(connectionString))
-            {
-                Console.WriteLine("Unable to create a new app config version. Press any key to finish.");
-                Console.Read();
-                System.Environment.Exit(0);
-            }
-        }
-    }
+    //        if (!Helper.CreateNewAppConfigVersion(connectionString))
+    //        {
+    //            Console.WriteLine("Unable to create a new app config version. Press any key to finish.");
+    //            Console.Read();
+    //            System.Environment.Exit(0);
+    //        }
+    //    }
+    //}
 
         Console.WriteLine("Writing APP configuration to the database");
         //Writing the configurations
         foreach (var item in configs)
         {
-            Helper.WriteAppConfigToDatabase(connectionString, item.Key, item.Value);
+            Helper.WriteAppConfigToDatabase(connectionString, item.Key, item.Value,ccnUsername);
         }
 
     }
