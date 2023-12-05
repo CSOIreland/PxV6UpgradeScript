@@ -60,7 +60,7 @@ else //Integrated Security
 Console.WriteLine();
 
 //Run the upgrade ddl
-Console.WriteLine("Please enter the path to your database folder, e.g \"C:\\Development\\6.0.0\\db\"");
+Console.WriteLine("Please enter the path to your target version database folder, e.g \"C:\\Development\\6.0.0\\db\"");
 baseFolder = Console.ReadLine();
 if (String.IsNullOrEmpty(baseFolder))
 {

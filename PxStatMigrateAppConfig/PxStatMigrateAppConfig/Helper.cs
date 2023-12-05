@@ -131,15 +131,15 @@ namespace PxStatMigrateAppConfig
         {
             try
             {
+
                 using (SqlConnection openCon = new SqlConnection(connectionString))
                 {
-                    string createConfigCommand = "App_Settings_Write";
+                    string createConfigCommand = "App_Settings_Migrate_Write";
 
                     using (SqlCommand queryCreateConfig = new SqlCommand(createConfigCommand))
                     {
                         queryCreateConfig.Connection = openCon;
                         queryCreateConfig.CommandType = CommandType.StoredProcedure;
-
                         queryCreateConfig.Parameters.Add("@appkey", SqlDbType.VarChar, 200).Value = configName;
                         queryCreateConfig.Parameters.Add("@appvalue", SqlDbType.VarChar, -1).Value = configValue;
                         queryCreateConfig.Parameters.Add("@appdescription", SqlDbType.VarChar, -1).Value = "Json config for " + configName;
@@ -213,7 +213,7 @@ namespace PxStatMigrateAppConfig
                         dr.Close();
                     }
 
-                    string createConfigCommand = "Api_Settings_Write";
+                    string createConfigCommand = "Api_Settings_Migrate_Write";
 
                     using (SqlCommand queryCreateConfig = new SqlCommand(createConfigCommand))
                     {
@@ -910,7 +910,7 @@ namespace PxStatMigrateAppConfig
 
             try
             {
-                string writeSp = "Api_Settings_Write";
+                string writeSp = "Api_Settings_Migrate_Write";
                 using (SqlConnection openCon = new SqlConnection(connectionString))
                 {
                     openCon.Open();
