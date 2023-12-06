@@ -176,6 +176,7 @@ if (Console.ReadLine().ToUpper() == "Y")
     if (Console.ReadLine().ToUpper().Equals("Y"))
     {
         Console.WriteLine("Please enter the path of the web.config file from which you wish to read, e.g. C:\\PxStat\\web.config");
+    Console.WriteLine("This will be the web.config of the version you are migrating FROM.");
         webConfigPath = Console.ReadLine();
         if (webConfigPath != null)
         {
