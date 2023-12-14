@@ -401,7 +401,8 @@ namespace PxStatMigrateAppConfig
                                 catch (SqlException ex)
                                 {
                                     string spError = commandString.Length > 100 ? commandString.Substring(0, 100) + " ...\n..." : commandString;
-                                    throw ex;
+                                    string message = "Error running sql: " + sql + " " + ex.Message;
+                                    throw new Exception(message);
                                 }
                             }
                         }
@@ -411,7 +412,9 @@ namespace PxStatMigrateAppConfig
             }
             catch (Exception ex)
             {
-                throw ex;
+                string fmessage = "Error running sql: " + sql + " " + ex.Message;
+
+                throw new Exception(fmessage); ;
             }
         }
 
