@@ -360,17 +360,13 @@ if (frontierChange)
             string appsettingsFile = Console.ReadLine();
             if (appsettingsFile != null)
             {
-                decimal appConfigVersion = Helper.GetLatestVersion(connectionString, "APP");
-                decimal apiConfigVersion = Helper.GetLatestVersion(connectionString, "API");
-
-                if (apiConfigVersion != 0 && appConfigVersion != 0)
+                
+                string appConfig = Helper.GetUpdatedAppConfig(appsettingsFile,  webConfigPath);
+                if (appConfig != null)
                 {
-                    string appConfig = Helper.GetUpdatedAppConfig(@appsettingsFile, apiConfigVersion, appConfigVersion, webConfigPath);
-                    if (appConfig != null)
-                    {
-                        Helper.WriteToFile(appsettingsFile, appConfig);
-                    }
+                    Helper.WriteToFile(appsettingsFile, appConfig);
                 }
+                
                 else
                 {
                     Console.WriteLine("Unable to create appsettings.json file. You must do this manually before deployment");

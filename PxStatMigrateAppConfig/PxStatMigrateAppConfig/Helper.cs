@@ -10,6 +10,8 @@ using System.Text.RegularExpressions;
 using System.IO;
 using System.Runtime.InteropServices;
 using System;
+using System.Reflection.Metadata;
+using System.Reflection;
 
 namespace PxStatMigrateAppConfig
 {
@@ -519,10 +521,12 @@ namespace PxStatMigrateAppConfig
         }
 
         //Copy the connection strings and memcached data from web.config an appsettings.json string
-        internal static string GetUpdatedAppConfig(string filePath, decimal apiVersion, decimal appVersion, string webConfigPath)
+        internal static string GetUpdatedAppConfig(string filePath,  string webConfigPath)
         {
             string appConfigText = "";
             var enyimMemcached = new ExpandoObject() as IDictionary<string, Object>;
+            
+
             List<object> serverList = null;
             List<IDictionary<string, Object>> dbConfigs = new List<IDictionary<string, Object>>();
             using (var streamReader = new StreamReader(filePath, Encoding.UTF8))
@@ -667,17 +671,43 @@ namespace PxStatMigrateAppConfig
 
             IDictionary<string, object> apiConfigs = (IDictionary<string, object>)dJson["API_Config"];
 
-            appConfigs["version"] = appVersion;
-            apiConfigs["version"] = apiVersion;
+
             dJson["APP_Config"] = appConfigs;
             dJson["API_Config"] = apiConfigs;
             dJson["ConnectionStrings"] = dbConfigs;
             dJson["enyimMemcached"] = enyimMemcached;
+            dJson["CacheSettings"] = GetCacheSettings();
 
-
+            //GetLanguageSettings(dJson);
 
             string astring = JsonConvert.SerializeObject(dJson,Formatting.Indented);
             return astring;
+        }
+
+        private static IDictionary<string, object> GetLanguageSettings(IDictionary<string,object> dJson)
+        {
+            IDictionary<string, object> languageResource = (Dictionary<string, object>)dJson["LanguageResource"];
+            IDictionary<string, object> languages = (IDictionary<string, object>)languageResource["languages"];
+            foreach (var language in languages)
+            {
+                IDictionary<string,object> langConfig = (Dictionary<string, object>)language.Value;
+                string langName = (string)langConfig["NAME"];
+                string langLocation = (string)langConfig["PLUGIN_LOCATION"];
+            }
+            return languages;
+        }
+
+        private static IDictionary<string,object> GetCacheSettings()
+        {
+            var cacheSettings = new ExpandoObject() as IDictionary<string, Object>;
+            Console.WriteLine("Please enter a suitable MemcacheD salsa for this environment:");
+            string salsa=Console.ReadLine();
+            cacheSettings.Add(new KeyValuePair<string, Object>("API_MEMCACHED_SALSA", salsa));
+            cacheSettings.Add(new KeyValuePair<string, Object>("API_MEMCACHED_MAX_VALIDITY", "2592000"));
+            cacheSettings.Add(new KeyValuePair<string, Object>("API_MEMCACHED_MAX_SIZE", "128"));
+            cacheSettings.Add(new KeyValuePair<string, Object>("API_MEMCACHED_ENABLED", true));
+            cacheSettings.Add(new KeyValuePair<string, Object>("API_CACHE_TRACE_ENABLED", false));
+            return cacheSettings;
         }
 
         internal static string GetLog4NetConfigFromWebConfig(string webConfig)
@@ -720,6 +750,7 @@ namespace PxStatMigrateAppConfig
 
         internal static string GetIisWebConfigFromWebConfig(string webConfig)
         {
+            bool stopWriting = false;
             try
             {
                 bool log4NetTags = false;
@@ -735,12 +766,23 @@ namespace PxStatMigrateAppConfig
                         {
                             if (ostring.Contains("<system.webServer>"))
                             {
+                                
                                 log4NetTags = true;
-                                sb.Append(ostring + Environment.NewLine);
+                                if(!stopWriting)
+                                    sb.Append(ostring + Environment.NewLine);
+                                sb.Append("<aspNetCore processPath=\"dotnet\" arguments=\".\\PxStat.dll\" stdoutLogEnabled=\"false\" stdoutLogFile=\".\\logs\\stdout\" hostingModel=\"inprocess\" />" + Environment.NewLine);
                                 do
                                 {
                                     ostring = streamReader.ReadLine() ?? string.Empty;
-                                    sb.Append(ostring + Environment.NewLine);
+                                    if (ostring.Contains("<handlers>"))
+                                    {
+                                        sb.Append(GetHandlerString());
+                                        stopWriting = true;
+                                    }
+                                    if(!stopWriting)
+                                        sb.Append(ostring + Environment.NewLine);
+                                    if (ostring.Contains("</handlers>")) stopWriting = false;
+                                    
                                 } while (!ostring.Contains("</system.webServer>"));
                             }
                         }
@@ -755,6 +797,46 @@ namespace PxStatMigrateAppConfig
                 Console.WriteLine("Error reading web config: " + ex.Message);
                 throw ex;
             }
+
+        }
+
+        private static string GetHandlerString()
+        {
+            string hstring = Environment.NewLine + "<handlers>" + Environment.NewLine;
+            hstring = hstring + "<!-- Add the handler to instruct IIS to serve the JSON RPC webservice requests -->" + Environment.NewLine;
+            hstring = hstring + "<add name=\"aspNetCore\" path=\"*\" verb=\"*\" modules=\"AspNetCoreModuleV2\" resourceType=\"Unspecified\" />" + Environment.NewLine;
+            hstring=hstring + "</handlers>" + Environment.NewLine;
+            return hstring;
+        }
+
+        private static string GetRules()
+        {
+            string rstring = Environment.NewLine +"<rules>" + Environment.NewLine;
+            rstring =rstring + "" + Environment.NewLine;
+            rstring = rstring + "<!-- Rule to allow api.jsonrpc URLs -->" + Environment.NewLine;
+            rstring = rstring + "<rule name=\"AllowApiJsonRpcUrls\" stopProcessing=\"true\">" + Environment.NewLine;
+            rstring = rstring + "<match url=\"^api\\.jsonrpc(/.*)?$\" />" + Environment.NewLine;
+            rstring = rstring + "<action type=\"None\" />" + Environment.NewLine;
+            rstring = rstring + "</rule>" + Environment.NewLine;
+            rstring = rstring + "<!-- Rule to allow api.restful URLs -->" + Environment.NewLine;
+            rstring = rstring + "<rule name=\"AllowApiRestfulUrls\" stopProcessing=\"true\">" + Environment.NewLine;
+            rstring = rstring + "<match url=\"^api\\.restful(/.*)?$\" />" + Environment.NewLine;
+            rstring = rstring + "<action type=\"None\" />" + Environment.NewLine;
+            rstring = rstring + "</rule>" + Environment.NewLine;
+            rstring = rstring + "<!-- Rule to allow api.static URLs -->" + Environment.NewLine;
+            rstring = rstring + "<rule name=\"AllowApiStaticUrls\" stopProcessing=\"true\">" + Environment.NewLine;
+            rstring = rstring + "<match url=\"^api\\.static(/.*)?$\" />" + Environment.NewLine;
+            rstring = rstring + "<action type=\"None\" />" + Environment.NewLine;
+            rstring = rstring + "</rule>" + Environment.NewLine;
+            rstring = rstring + "<rule name=\"Return404ForOtherRequests\" stopProcessing=\"true\">" + Environment.NewLine;
+            rstring = rstring + "<match url=\".*\" />" + Environment.NewLine;
+            rstring = rstring + "<conditions>" + Environment.NewLine;
+            rstring = rstring + "<add input=\"{REQUEST_URI}\" pattern=\"^/(api\\.jsonrpc|api\\.restful|api\\.static)/\" negate=\"true\" />" + Environment.NewLine;
+            rstring = rstring + "</conditions>" + Environment.NewLine;
+            rstring = rstring + "<action type=\"CustomResponse\" statusCode=\"404\" statusReason=\"Not Found\" statusDescription=\"The requested resource was not found.\" />" + Environment.NewLine;
+            rstring = rstring + "</rule>" + Environment.NewLine;
+            rstring = rstring + "</rules>" + Environment.NewLine;
+            return rstring;
 
         }
 
