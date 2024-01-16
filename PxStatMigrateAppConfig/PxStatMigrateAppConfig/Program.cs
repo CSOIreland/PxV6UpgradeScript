@@ -356,7 +356,7 @@ if (frontierChange)
         }
         if (webConfigPath != null)
         {
-            Console.WriteLine("Please enter the appsettings.json path and filename");
+            Console.WriteLine("Please enter the appsettings.json path and filename. It is assumed that the appsettings.json file exists already");
             string appsettingsFile = Console.ReadLine();
             if (appsettingsFile != null)
             {
@@ -385,7 +385,7 @@ if (frontierChange)
 
         if (webConfigPath == null)
         {
-            Console.WriteLine("Please enter the web.config path and filename");
+            Console.WriteLine("Please enter the web.config path and filename. This file will not exist already, but please provide the full path and filename");
             webConfigPath = Console.ReadLine();
 
         }
@@ -419,7 +419,7 @@ if (frontierChange)
 
         if (webConfigPath != null)
         {
-            Console.WriteLine("Please enter the IIS web.config path and filename");
+            Console.WriteLine("Please enter the new IIS web.config path and filename");
             string webConfigIisPath = Console.ReadLine();
             if (webConfigIisPath != null)
             {
