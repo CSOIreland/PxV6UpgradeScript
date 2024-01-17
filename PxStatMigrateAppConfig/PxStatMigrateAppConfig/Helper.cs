@@ -627,11 +627,12 @@ namespace PxStatMigrateAppConfig
                                 var receiveTimeoutMatch = Regex.Matches(ostring, "receiveTimeout\\s*=\\s*\"([^\"]*)\"", RegexOptions.IgnoreCase); //receiveTimeout plus the first thing in quotes after it
 
                                 var minPoolSize = GetStringFromMatch(minPoolSizeMatch, "minPoolSize");
-                                var maxPoolSize = GetStringFromMatch(minPoolSizeMatch, "maxPoolSize");
-                                var connectionTimeout = GetStringFromMatch(minPoolSizeMatch, "connectionTimeout");
-                                var deadTimeout = GetStringFromMatch(minPoolSizeMatch, "deadTimeout");
-                                var queueTimeout = GetStringFromMatch(minPoolSizeMatch, "queueTimeout");
-                                var receiveTimeout = GetStringFromMatch(minPoolSizeMatch, "receiveTimeout");
+                                var maxPoolSize = GetStringFromMatch(maxPoolSizeMatch , "maxPoolSize");
+                                var connectionTimeout = GetStringFromMatch(connectionTimeoutMatch , "connectionTimeout");
+                                var deadTimeout = GetStringFromMatch(deadTimeoutMatch, "deadTimeout");
+                                var queueTimeout = GetStringFromMatch(queueTimeoutMatch, "queueTimeout");
+                                var receiveTimeout = GetStringFromMatch(receiveTimeoutMatch, "receiveTimeout");
+
 
                                 var socketPool = new ExpandoObject() as IDictionary<string, Object>;
 
