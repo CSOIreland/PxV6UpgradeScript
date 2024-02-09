@@ -6,6 +6,7 @@ You will have to supply database login details, as well as paths to the config a
  */
 
 using PxStatMigrateAppConfig;
+using System.Web;
 
 string dbName;
 string server;
@@ -149,26 +150,6 @@ if (Console.ReadLine().ToUpper() == "Y")
     Console.WriteLine();
 }
 
-//There must be a configuration version corresponding to the configurations you are entering.
-//If you need to create one, you will need to go through this step
-
-//Console.WriteLine();
-//Console.WriteLine("An API config will have been created by default. However if you wish to create an entirely new one, choose this option");
-//Console.WriteLine("Do you wish to create a new API config version in the database? y/n");
-
-//string yn = Console.ReadLine();
-//if (!String.IsNullOrEmpty(yn))
-//{
-//    if (yn.ToUpper().Equals("Y"))
-//    {
-//        if (Helper.CreateNewApiConfigVersion(connectionString)<=0)
-//        {
-//            Console.WriteLine("Unable to create a new API config version. Press any key to finish.");
-//            Console.Read();
-//            System.Environment.Exit(0);
-//        }
-//    }
-//}
 
 
     Console.WriteLine();
@@ -183,7 +164,10 @@ if (Console.ReadLine().ToUpper() == "Y")
             Dictionary<string, string> webConfigs = Helper.GetWebConfig(webConfigPath);
             foreach (var webConfig in webConfigs)
             {
-                Helper.WriteApiConfigToDatabase(connectionString, webConfig.Key, webConfig.Value,ccnUsername);
+                if(webConfig.Value.Contains(';'))
+                    Helper.WriteApiConfigToDatabase(connectionString, webConfig.Key,HttpUtility.HtmlDecode( webConfig.Value), ccnUsername); 
+                else
+                    Helper.WriteApiConfigToDatabase(connectionString, webConfig.Key, webConfig.Value,ccnUsername);
                 Console.WriteLine(webConfig.Key + ":" + webConfig.Value);
             }
         }
@@ -310,26 +294,7 @@ if (Console.ReadLine().ToUpper().Equals("Y"))
 
     } while (true);
 
-    //There must be a configuration version corresponding to the configurations you are entering.
-    //If you need to create a new one, you will need to go through this step
-    
-    //Console.WriteLine();
-    //Console.WriteLine("An app config version has already been created for you. However, do you wish to create a new app config version in the database? y/n");
 
-    //string yn = Console.ReadLine();
-    //if (!String.IsNullOrEmpty(yn))
-    //{
-    //    if (yn.ToUpper().Equals("Y"))
-    //    {
-            
-    //        if (!Helper.CreateNewAppConfigVersion(connectionString))
-    //        {
-    //            Console.WriteLine("Unable to create a new app config version. Press any key to finish.");
-    //            Console.Read();
-    //            System.Environment.Exit(0);
-    //        }
-    //    }
-    //}
 
         Console.WriteLine("Writing APP configuration to the database");
         //Writing the configurations

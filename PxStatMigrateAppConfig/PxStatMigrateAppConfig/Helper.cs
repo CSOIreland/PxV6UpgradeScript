@@ -532,6 +532,7 @@ namespace PxStatMigrateAppConfig
 
             List<object> serverList = null;
             List<IDictionary<string, Object>> dbConfigs = new List<IDictionary<string, Object>>();
+            Dictionary<string, object> dbDefault = new();
             using (var streamReader = new StreamReader(filePath, Encoding.UTF8))
             {
                 appConfigText = streamReader.ReadToEnd();
@@ -564,16 +565,18 @@ namespace PxStatMigrateAppConfig
                                 var cstringMatch = Regex.Matches(ostring, "connectionString\\s*=\\s*\"([^\"]*)\"", RegexOptions.IgnoreCase); //connection string plus the first thing in quotes after it
                                 var nameMatch = Regex.Matches(ostring, "name\\s*=\\s*\"([^\"]*)\"", RegexOptions.IgnoreCase); //name plus the first thing in quotes after it
                                 var providerMatch = Regex.Matches(ostring, "provider\\s*=\\s*\"([^\"]*)\"", RegexOptions.IgnoreCase);
+                                var defaultConnectionMatch = ostring.ToLower().Contains("defaultconnection");
 
                                 var nameValues = GetStringFromMatch(nameMatch, "name");
                                 var cstringValues = GetStringFromMatch(cstringMatch, "connectionString");
                                 var providerValues = GetStringFromMatch(providerMatch, "provider");
 
-                                if (nameValues.Count > 0 && cstringValues.Count > 0)
+                                if (nameValues.Count > 0 && cstringValues.Count > 0 && defaultConnectionMatch)
                                 {
                                     var dbConnection = new ExpandoObject() as IDictionary<string, Object>;
                                     dbConnection.Add(nameValues["name"], cstringValues["connectionString"]);
                                     dbConfigs.Add(dbConnection);
+                                    dbDefault.Add("DefaultConnection", cstringValues["connectionString"]);
                                 }
 
                             }
@@ -678,7 +681,7 @@ namespace PxStatMigrateAppConfig
 
             dJson["APP_Config"] = appConfigs;
             dJson["API_Config"] = apiConfigs;
-            dJson["ConnectionStrings"] = dbConfigs;
+            dJson["ConnectionStrings"] = dbDefault;
             dJson["enyimMemcached"] = enyimMemcached;
             dJson["CacheSettings"] = GetCacheSettings();
 
@@ -789,6 +792,22 @@ namespace PxStatMigrateAppConfig
                                     
                                 } while (!ostring.Contains("</system.webServer>"));
                             }
+                            if(ostring.Contains("<system.web>"))
+                            {
+                                
+                                if (!stopWriting)
+                                    sb.Append(ostring + Environment.NewLine);
+                                do 
+                                {
+                                    ostring = streamReader.ReadLine() ?? string.Empty;
+                                    if(ostring.Contains("<sessionState"))
+                                        sb.Append(ostring + Environment.NewLine);
+
+                                } while (!ostring.Contains("</system.web>"));
+                                sb.Append(ostring + Environment.NewLine);
+
+                            }
+                            
                         }
                     }
                 }
