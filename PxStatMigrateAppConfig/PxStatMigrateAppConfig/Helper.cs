@@ -608,8 +608,8 @@ namespace PxStatMigrateAppConfig
                                 if (addrValues.Count > 0 && portValues.Count > 0)
                                 {
                                     var server = new ExpandoObject() as IDictionary<string, Object>;
-                                    server.Add("address", addrValues["address"]);
-                                    server.Add("port", portValues["port"]);
+                                    server.Add("Address", addrValues["address"]);
+                                    server.Add("Port", portValues["port"]);
                                     if (serverList != null)
                                     {
                                         serverList.Add(server);
