@@ -604,6 +604,7 @@ namespace PxStatMigrateAppConfig
 
                                 var addrValues = GetStringFromMatch(addrMatch, "address");
                                 var portValues = GetStringFromMatch(portMatch, "port");
+                               
                                 if (addrValues.Count > 0 && portValues.Count > 0)
                                 {
                                     var server = new ExpandoObject() as IDictionary<string, Object>;
@@ -612,7 +613,7 @@ namespace PxStatMigrateAppConfig
                                     if (serverList != null)
                                     {
                                         serverList.Add(server);
-                                        enyimMemcached.Add("Servers", server);
+                                        enyimMemcached.Add("Servers", serverList);
                                     }
 ;
                                 }
