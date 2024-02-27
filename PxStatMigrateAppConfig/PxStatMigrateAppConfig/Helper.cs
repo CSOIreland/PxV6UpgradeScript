@@ -738,7 +738,10 @@ namespace PxStatMigrateAppConfig
                                 sb.Append(ostring + Environment.NewLine);
                                 do
                                 {
+
                                     ostring= streamReader.ReadLine() ?? string.Empty;
+                                    if(ostring.Contains("<connectionType"))
+                                        ostring = "<connectionType value=\"Microsoft.Data.SqlClient.SqlConnection,Microsoft.Data.SqlClient,Version=1.0.0.0,Culture=neutral,PublicKeyToken=23ec7fc2d6eaa4a5\"/>";
                                     sb.Append(ostring + Environment.NewLine);
                                 } while (!ostring.Contains("</log4net>"));
                             }
