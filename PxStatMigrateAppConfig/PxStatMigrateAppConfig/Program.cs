@@ -5,6 +5,13 @@ You will have to supply database login details, as well as paths to the config a
  
  */
 
+/*
+ For NISRA change - check the version of the SQL Server client on log4net config.
+Also check language.json file and location
+Also check that db connection is sql and not AD (or not?)
+ 
+ */
+
 using PxStatMigrateAppConfig;
 using System.Web;
 
@@ -150,7 +157,8 @@ if (Console.ReadLine().ToUpper() == "Y")
     Console.WriteLine();
 }
 
-
+if (frontierChange)
+{
 
     Console.WriteLine();
     Console.WriteLine("Do you wish to create an API config from the web config? y/n");
@@ -173,8 +181,7 @@ if (Console.ReadLine().ToUpper() == "Y")
         }
     }
 
-if (frontierChange)
-{
+
 
     Console.WriteLine();
     Console.WriteLine("Do you wish to create a Firebase Key API config entry from a Firebase.json file? y/n");
@@ -193,7 +200,7 @@ if (frontierChange)
         }
 
     }
-}
+
 
 Console.WriteLine();
 Console.WriteLine("Do you wish to run all of the json config upgrade scripts after the chosen version to the current version of the API config? y/n");
@@ -398,6 +405,7 @@ if (frontierChange)
     }
 
 }
+} // End of FrontierChange if statement
 //All done
 Console.WriteLine("Configuration complete, press any key to exit");
 Console.Read();
