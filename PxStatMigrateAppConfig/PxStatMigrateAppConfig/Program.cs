@@ -13,7 +13,10 @@ Also check that db connection is sql and not AD (or not?)
  */
 
 using PxStatMigrateAppConfig;
+using System.Net;
+using System.Net.Http.Json;
 using System.Web;
+using static System.Net.WebRequestMethods;
 
 string dbName;
 string server;
@@ -28,6 +31,9 @@ string upgradeFrom = null;
 string baseFolder = null;
 bool frontierChange = false; //To indicate to several functions if this a change from pre 6.0.0 to 6.0.0 or later
 string startVersion=null;
+
+
+
 
 //Get a pxstat username
 Console.WriteLine("Please supply a valid PxStat admin username. Your app config changes will be shown against this name");
@@ -66,6 +72,7 @@ if (!string.IsNullOrEmpty(password))
 else //Integrated Security
     connectionString = "Server=" + server + ";Initial Catalog=" + dbName + ";Integrated Security=SSPI;Persist Security Info=False;Column Encryption Setting=enabled;Trust Server Certificate=true";
 Console.WriteLine();
+
 
 //Run the upgrade ddl
 Console.WriteLine("Please enter the path to your target version database folder, e.g \"C:\\Development\\6.0.0\\db\"");
@@ -257,11 +264,25 @@ if (Console.ReadLine().ToUpper().Equals("Y"))
 
     //Get details of the config and schema files
     Console.WriteLine("Getting config details. When you have finished entering configurations, just press enter and the application" +
-        " will continue to the next step. You may need to create an alternative (up to date) version of the config file(s) first. This is definitely necessary for server.config.");
+        " will continue to the next step. Your config files must be validated against a schema file. Please ensure that the config files are " +
+        "all on the same folder. Do likewise for the schema files");
     Console.WriteLine();
     string jsonFile = null;
     string schemaFile = null;
     string config = null;
+        char delimiter = OperatingSystem.IsWindows()? Path.DirectorySeparatorChar :Path.AltDirectorySeparatorChar ;
+
+        Console.WriteLine(Environment.NewLine);
+        Console.WriteLine("Please enter the full path of the config file folder");
+        string configFileFolder=Console.ReadLine();
+        if(configFileFolder.EndsWith(delimiter))
+            configFileFolder=configFileFolder.Substring(0,configFileFolder.Length - 1);
+
+        Console.WriteLine(Environment.NewLine);
+        Console.WriteLine("Please enter the full path of the schema file folder");
+        string schemaFileFolder=Console.ReadLine();
+        if(schemaFileFolder.EndsWith(delimiter))
+            schemaFileFolder=schemaFileFolder.Substring(0,schemaFileFolder.Length - 1);
 
     do
     {
@@ -269,8 +290,11 @@ if (Console.ReadLine().ToUpper().Equals("Y"))
         Console.WriteLine("Please enter the name of a config (e.g. config.global.json)");
         config = Console.ReadLine();
         if (string.IsNullOrEmpty(config)) break;
-        Console.WriteLine("Please enter the full or relative path and name of the json config file for " + config);
-        string jsonFilePath = Console.ReadLine();
+
+        string jsonFilePath =configFileFolder + delimiter + config;
+        string schemaFilePath = schemaFileFolder + delimiter + config.Replace("config", "schema");
+
+        
         if (string.IsNullOrEmpty(jsonFilePath)) break;
         jsonFile = Helper.GetFileString(jsonFilePath);
         if (jsonFile == null)
@@ -278,8 +302,7 @@ if (Console.ReadLine().ToUpper().Equals("Y"))
             Console.WriteLine("File not found " + jsonFilePath);
             continue;
         }
-        Console.WriteLine("Please enter the full or relative path and name of the schema file for " + config);
-        string schemaFilePath = Console.ReadLine();
+        
         if (string.IsNullOrEmpty(schemaFilePath)) break;
 
         schemaFile = Helper.GetFileString(schemaFilePath);
@@ -288,7 +311,7 @@ if (Console.ReadLine().ToUpper().Equals("Y"))
             Console.WriteLine("File not found " + schemaFilePath);
             continue;
         }
-
+        
         if (!Helper.ValidateJson(jsonFile, schemaFile))
         {
             Console.WriteLine("Validation error found for " + config + " end of process. Please attempt to input the details again, or else just press 'enter' to end this process.");
@@ -406,6 +429,117 @@ if (frontierChange)
 
 }
 } // End of FrontierChange if statement
+else
+{
+    //Non frontier change
+    Console.WriteLine();
+    Console.WriteLine("Do you wish to update the APP config on the database? y/n");
+    if (Console.ReadLine().ToUpper().Equals("Y"))
+    {
+        configs = new Dictionary<string, string>();
+        //Get details of the config and schema files
+        Console.WriteLine("Getting config details. When you have finished entering configurations, just press enter and the application" +
+            " will continue to the next step. Your config files must be validated against a schema file. Please ensure that the config files are " +
+            "all on the same folder. Do likewise for the schema files");
+        Console.WriteLine();
+        string jsonFile = null;
+        string schemaFile = null;
+        string config = null;
+        char delimiter = OperatingSystem.IsWindows() ? Path.DirectorySeparatorChar : Path.AltDirectorySeparatorChar;
+
+        Console.WriteLine(Environment.NewLine);
+        Console.WriteLine("Please enter the full path of the config file folder");
+        string configFileFolder = Console.ReadLine();
+        if (configFileFolder.EndsWith(delimiter))
+            configFileFolder = configFileFolder.Substring(0, configFileFolder.Length - 1);
+
+        Console.WriteLine(Environment.NewLine);
+        Console.WriteLine("Please enter the full path of the schema file folder");
+        string schemaFileFolder = Console.ReadLine();
+        if (schemaFileFolder.EndsWith(delimiter))
+            schemaFileFolder = schemaFileFolder.Substring(0, schemaFileFolder.Length - 1);
+
+        do
+        {
+            Console.WriteLine();
+            Console.WriteLine("Please enter the name of a config (e.g. config.global.json)");
+            config = Console.ReadLine();
+            if (string.IsNullOrEmpty(config)) break;
+
+            string jsonFilePath = configFileFolder + delimiter + config;
+            string schemaFilePath = schemaFileFolder + delimiter + config.Replace("config", "schema");
+
+
+            if (string.IsNullOrEmpty(jsonFilePath)) break;
+            jsonFile = Helper.GetFileString(jsonFilePath);
+            if (jsonFile == null)
+            {
+                Console.WriteLine("File not found " + jsonFilePath);
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(schemaFilePath)) break;
+
+            schemaFile = Helper.GetFileString(schemaFilePath);
+            if (schemaFile == null)
+            {
+                Console.WriteLine("File not found " + schemaFilePath);
+                continue;
+            }
+
+            if (!Helper.ValidateJson(jsonFile, schemaFile))
+            {
+                Console.WriteLine("Validation error found for " + config + " end of process. Please attempt to input the details again, or else just press 'enter' to end this process.");
+
+                continue;
+            }
+
+            if (!String.IsNullOrEmpty(jsonFile) && !String.IsNullOrEmpty(schemaFile) && !String.IsNullOrEmpty(config) && !configs.ContainsKey(config))
+                configs.Add(config, jsonFile);
+
+        } while (true);
+
+
+
+        Console.WriteLine("Writing APP configuration to the database");
+        //Writing the configurations
+        foreach (var item in configs)
+        {
+            Helper.UpdateAppConfigToDatabase(connectionString, item.Key, item.Value, ccnUsername);
+        }
+
+    }
+
+    //Do the API key updates
+    Console.WriteLine();
+    Console.WriteLine("Do you wish to run all of the json config upgrade scripts after the chosen version to the current version of the API config? y/n");
+    if (Console.ReadLine().ToUpper().Equals("Y"))
+    {
+       
+        decimal version = Helper.GetLatestVersion(connectionString, 1);
+        if (startVersion == null)
+        {
+            //Run the all upgrade scripts older than the one you're migrating from in succession
+            Console.WriteLine("Please enter the version of pxstat from which you are upgrading");
+            startVersion = Console.ReadLine();
+            upgradeFrom = startVersion;
+            if (!upgradeFrom.Substring(upgradeFrom.Length - 4, 4).Equals(".json"))
+                upgradeFrom = upgradeFrom + ".json";
+
+        }
+
+        List<string> apiScripts = Helper.GetUpgradeList(baseFolder + "Config\\Api", upgradeFrom);
+        foreach (var script in apiScripts)
+        {
+            string scriptString = Helper.GetFileString(script);
+            Helper.RunApiUpgradeJsonScript(scriptString, connectionString, version, ccnUsername);
+        }
+
+    }
+
+
+}
+
 //All done
 Console.WriteLine("Configuration complete, press any key to exit");
 Console.Read();

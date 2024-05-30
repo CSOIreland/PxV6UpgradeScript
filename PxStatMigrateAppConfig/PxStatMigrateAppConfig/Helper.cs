@@ -163,6 +163,52 @@ namespace PxStatMigrateAppConfig
             }
         }
 
+        /// <summary>
+        /// Update the new configuration to the database using the App_Settings_Update stored procedure
+        /// </summary>
+        /// <param name="connectionString"></param>
+        /// <param name="configName"></param>
+        /// <param name="configValue"></param>
+        /// <returns></returns>
+        internal static bool UpdateAppConfigToDatabase(string connectionString, string configName, string configValue, string ccnUsername)
+        {
+            try
+            {
+
+                using (SqlConnection openCon = new SqlConnection(connectionString))
+                {
+                    string createConfigCommand = "App_Settings_Migrate_Update";
+
+                    using (SqlCommand queryCreateConfig = new SqlCommand(createConfigCommand))
+                    {
+                        queryCreateConfig.Connection = openCon;
+                        queryCreateConfig.CommandType = CommandType.StoredProcedure;
+                        queryCreateConfig.Parameters.Add("@appkey", SqlDbType.VarChar, 200).Value = configName;
+                        queryCreateConfig.Parameters.Add("@appvalue", SqlDbType.VarChar, -1).Value = configValue;
+                        queryCreateConfig.Parameters.Add("@appdescription", SqlDbType.VarChar, -1).Value = "Json config for " + configName;
+                        queryCreateConfig.Parameters.Add("@userName", SqlDbType.VarChar, 256).Value = ccnUsername;
+
+                        SqlParameter outputIdParam = new SqlParameter("@output", SqlDbType.Int)
+                        {
+                            Direction = ParameterDirection.Output
+                        };
+
+                        openCon.Open();
+
+                        queryCreateConfig.ExecuteNonQuery();
+                        
+                        openCon.Close();
+                    }
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Database insert error: " + e.Message + "\n");
+                return false;
+            }
+        }
+
         internal static decimal GetLatestVersion(string connectionString,int configType)
         {
             decimal version = 0;
@@ -1206,6 +1252,11 @@ namespace PxStatMigrateAppConfig
                 Console.WriteLine("Can't delete API setting for key " + key + ". " + ex.Message);
                 throw ex;
             }
+        }
+
+        public void ApiPost(string domain, string user, string password,string uri)
+        {
+
         }
     }
 
