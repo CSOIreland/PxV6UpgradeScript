@@ -1,0 +1,5 @@
+PxStatMigrateAppConfig/.vs
+PxStatMigrateAppConfig/bin
+PxStatMigrateAppConfig/obj
+.vs/*
+vs
