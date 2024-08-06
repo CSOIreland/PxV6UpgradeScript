@@ -13,6 +13,7 @@ Also check that db connection is sql and not AD (or not?)
  */
 
 using PxStatMigrateAppConfig;
+using PxStatMigrateAppConfig.VersionScripts;
 using System.Net;
 using System.Net.Http.Json;
 using System.Web;
@@ -31,8 +32,6 @@ string upgradeFrom = null;
 string baseFolder = null;
 bool frontierChange = false; //To indicate to several functions if this a change from pre 6.0.0 to 6.0.0 or later
 string startVersion=null;
-
-
 
 
 //Get a pxstat username
@@ -538,6 +537,12 @@ else
     }
 
 
+}
+
+Console.WriteLine("Do you wish to regenerate all multi-language outstanding mandatory product and subject keywords? ");
+if (Console.ReadLine().ToUpper().Equals("Y"))
+{
+    ProductSubjectKeywordRepair8_2.Run(connectionString);
 }
 
 //All done
