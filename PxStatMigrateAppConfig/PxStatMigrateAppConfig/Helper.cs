@@ -12,6 +12,7 @@ using System.Runtime.InteropServices;
 using System;
 using System.Reflection.Metadata;
 using System.Reflection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace PxStatMigrateAppConfig
 {
@@ -1257,6 +1258,47 @@ namespace PxStatMigrateAppConfig
         public void ApiPost(string domain, string user, string password,string uri)
         {
 
+        }
+
+        public static void Ptest(string connectionString,string lngIsoCode)
+        {
+            StreamReader sr = new StreamReader("C:\\Wspace\\Temp\\test.sql");
+            string sql = sr.ReadToEnd();
+            using (SqlConnection openCon = new SqlConnection(connectionString))
+            {
+                openCon.Open();
+                using (SqlCommand qryRead = new SqlCommand(sql,openCon))
+                {
+                    qryRead.Parameters.Add(new SqlParameter("@lngIsoCode",lngIsoCode) );
+                    qryRead.CommandType = CommandType.Text;
+                    var reader=qryRead.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        string z=reader.GetString(2);
+                    }
+                    openCon.Close();
+                }
+            }
+        }
+
+        public static void CreateAnalyticsJobAndSchedule(string dbLocation,string connectionString,string lngIsoCode,string dbOwner,string dbName)
+        {
+            StreamReader sr = new StreamReader(dbLocation + "\\AnalyticJob.sql");
+            string sql = sr.ReadToEnd();
+            using (SqlConnection openCon = new SqlConnection(connectionString))
+            {
+                openCon.Open();
+                using (SqlCommand qryCreate = new SqlCommand(sql, openCon))
+                {
+                    qryCreate.Parameters.Add(new SqlParameter("@dbOwner", dbOwner));
+                    qryCreate.Parameters.Add(new SqlParameter("@dbName", dbName));
+                    qryCreate.Parameters.Add(new SqlParameter("@reportCommand", "exec Security_Analytic_Update_ReadReport '" + lngIsoCode + "'"));
+                    qryCreate.CommandType = CommandType.Text;
+                    var reader = qryCreate.ExecuteNonQuery();
+   
+                    openCon.Close();
+                }
+            }
         }
     }
 
