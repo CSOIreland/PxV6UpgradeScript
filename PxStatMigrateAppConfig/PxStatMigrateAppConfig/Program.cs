@@ -546,7 +546,7 @@ if (Console.ReadLine().ToUpper().Equals("Y"))
     ProductSubjectKeywordRepair8_2.Run(connectionString);
 }
 
-Console.WriteLine("Do you wish to create the Analytics report daily job? ");
+Console.WriteLine("Do you wish to create the Analytics report daily job?");
 if (Console.ReadLine().ToUpper().Equals("Y"))
 {
     Console.WriteLine("Please enter the 2 letter code for the application default language, e.g. en ");

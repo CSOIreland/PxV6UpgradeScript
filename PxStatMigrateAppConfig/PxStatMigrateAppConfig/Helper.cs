@@ -762,6 +762,17 @@ namespace PxStatMigrateAppConfig
             cacheSettings.Add(new KeyValuePair<string, Object>("API_MEMCACHED_MAX_SIZE", "128"));
             cacheSettings.Add(new KeyValuePair<string, Object>("API_MEMCACHED_ENABLED", true));
             cacheSettings.Add(new KeyValuePair<string, Object>("API_CACHE_TRACE_ENABLED", false));
+            cacheSettings.Add(new KeyValuePair<string, Object>("API_CACHE_LOCK_PREFIX", "CACHE_LOCK"));
+            cacheSettings.Add(new KeyValuePair<string, Object>("API_CACHE_LOCK_POLL_INTERVAL", 200));
+            cacheSettings.Add(new KeyValuePair<string, Object>("API_CACHE_LOCK_MAX_TIME", 10));
+            var cacheLockSettings=new ExpandoObject() as IDictionary<string, Object>;
+            cacheLockSettings.Add(new KeyValuePair<string, Object>("API_CACHE_LOCK_ENABLED",true));
+            cacheLockSettings.Add(new KeyValuePair<string, Object>("API_CACHE_LOCK_POLL_INTERVAL", "1"));
+            cacheLockSettings.Add(new KeyValuePair<string, Object>("API_CACHE_LOCK_PREFIX", "LCK"));
+            cacheLockSettings.Add(new KeyValuePair<string, Object>("API_CACHE_LOCK_MAX_TIME", "30"));
+            cacheSettings.Add(new KeyValuePair<string, Object>("API_CACHE_LOCK_SETTINGS", cacheLockSettings));
+
+
             return cacheSettings;
         }
 
@@ -1292,6 +1303,7 @@ namespace PxStatMigrateAppConfig
                 {
                     qryCreate.Parameters.Add(new SqlParameter("@dbOwner", dbOwner));
                     qryCreate.Parameters.Add(new SqlParameter("@dbName", dbName));
+                    qryCreate.Parameters.Add(new SqlParameter("@lngisocode",lngIsoCode));
                     qryCreate.Parameters.Add(new SqlParameter("@reportCommand", "exec Security_Analytic_Update_ReadReport '" + lngIsoCode + "'"));
                     qryCreate.CommandType = CommandType.Text;
                     var reader = qryCreate.ExecuteNonQuery();
