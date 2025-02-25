@@ -13,6 +13,7 @@ using System;
 using System.Reflection.Metadata;
 using System.Reflection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using System.Collections.Generic;
 
 namespace PxStatMigrateAppConfig
 {
@@ -568,6 +569,82 @@ namespace PxStatMigrateAppConfig
                 throw ex;
             }
             return config;
+        }
+
+        internal static string GetUpdatedAppConfigWithLanguageSettings(string configServerPath,string appSettingsPath)
+        {
+            // Read the JSON file content
+            string configJsonContent = GetFileString(configServerPath);
+            if (configJsonContent == null)
+            {
+                Console.WriteLine("Error reading JSON file from path: " + configServerPath);
+                return null;
+            }
+
+            // Parse the JSON content
+            JObject configJsonObject = JObject.Parse(configJsonContent);
+
+            // Extract the "language-resource" array
+            JToken languageResourceToken = configJsonObject["language-resource"];
+            if (languageResourceToken == null)
+            {
+                Console.WriteLine("Error: 'language-resource' array not found in JSON file.");
+                return null;
+            }
+
+            // Deserialize the "language-resource" array into an array of IDictionary<string, object>
+            IList<IDictionary<string, object>> languageResourceArray = languageResourceToken.ToObject<IList<IDictionary<string, object>>>();
+            if (languageResourceArray == null)
+            {
+                Console.WriteLine("Error deserializing 'language-resource' array.");
+                return null;
+            }
+            Dictionary<string, object> outputLanguageResource = new();
+            IList <IDictionary<string, object>> outputDictionaryLangauges= new List<IDictionary<string, object>>();
+
+            foreach (var item in languageResourceArray)
+            {
+                Dictionary<string, object> itemDictionary = new();
+                itemDictionary.Add("ISO", item["iso"]);
+                itemDictionary.Add("NAME", item["name"]);
+                itemDictionary.Add("PLUGIN_LOCATION", "bin/net8.0/PxLanguagePlugin." + item["iso"] + ".dll");
+                itemDictionary.Add("NAMESPACE_CLASS", "PxLanguagePlugin." + item["iso"] + ".dll");
+                itemDictionary.Add("IS_LIVE", item["is-live"]);
+                itemDictionary.Add("TRANSLATION_URL", item["translationUrl"]);
+
+                outputDictionaryLangauges.Add(itemDictionary);
+            }
+            outputLanguageResource.Add("languages", outputDictionaryLangauges); 
+
+            string appsettingsJsonString = GetFileString(appSettingsPath);
+            if (appsettingsJsonString == null)
+            {
+                Console.WriteLine("Error reading appsettings.json file from path: " + appSettingsPath);
+                return null;
+            }
+
+            // Parse the appsettings.json content
+            JObject appsettingsJsonObject=JObject.Parse(appsettingsJsonString);
+            if (appsettingsJsonObject == null)
+            {
+                Console.WriteLine("Error parsing appsettings.json file.");
+                return null;
+            }
+
+            // Update the "language-resource" array in the appsettings.json content
+            appsettingsJsonObject.Add("LanguageResource", JValue.FromObject(outputLanguageResource));
+
+            // You can now use the languageResourceArray as needed
+            // For demonstration, let's convert it back to a JSON string and return it
+            string updatedAppConfig = JsonConvert.SerializeObject(appsettingsJsonObject, Formatting.Indented);
+
+
+
+            if(updatedAppConfig == null)
+            {
+                Console.WriteLine("Error deserializing 'language-resource' array.");
+            }
+            return updatedAppConfig;
         }
 
         //Copy the connection strings and memcached data from web.config an appsettings.json string

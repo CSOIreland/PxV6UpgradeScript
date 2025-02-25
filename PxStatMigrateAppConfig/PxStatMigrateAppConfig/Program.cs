@@ -32,7 +32,8 @@ string upgradeFrom = null;
 string baseFolder = null;
 bool frontierChange = false; //To indicate to several functions if this a change from pre 6.0.0 to 6.0.0 or later
 string startVersion=null;
-
+string configServerPath = null;
+string appsettingsFile = null;
 
 
 //Get a pxstat username
@@ -294,8 +295,11 @@ if (Console.ReadLine().ToUpper().Equals("Y"))
         string jsonFilePath =configFileFolder + delimiter + config;
         string schemaFilePath = schemaFileFolder + delimiter + config.Replace("config", "schema");
 
-        
-        if (string.IsNullOrEmpty(jsonFilePath)) break;
+            //we might need this later for adding the language plugin section from config.server.json to appsettings.json
+            if (config.ToLower().Equals("config.server.json"))
+                configServerPath = jsonFilePath;
+
+            if (string.IsNullOrEmpty(jsonFilePath)) break;
         jsonFile = Helper.GetFileString(jsonFilePath);
         if (jsonFile == null)
         {
@@ -352,7 +356,7 @@ if (frontierChange)
         if (webConfigPath != null)
         {
             Console.WriteLine("Please enter the appsettings.json path and filename. It is assumed that the appsettings.json file exists already");
-            string appsettingsFile = Console.ReadLine();
+            appsettingsFile = Console.ReadLine();
             if (appsettingsFile != null)
             {
                 
@@ -371,6 +375,37 @@ if (frontierChange)
         }
 
 
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("Do you wish to update the appsettings.json file from the config.server.json file with the language plugin settings? y/n");
+
+    if (Console.ReadLine().ToUpper().Equals("Y"))
+    {
+        string oldConfigServerPath = null;
+        
+            Console.WriteLine("Please enter the path of the config.server.json file. This must be the working config.server.json file from the old application, and not the version you may have sent to the database.");
+            oldConfigServerPath = Console.ReadLine();
+       
+
+        if(appsettingsFile==null)
+        {
+            Console.WriteLine("Please enter the path of the appsettings.json file. This will be the new appsettings.json file you may have just created");
+            appsettingsFile = Console.ReadLine();
+        }
+
+        if (oldConfigServerPath != null && appsettingsFile!=null) 
+        { 
+            string newAppSettingsJson = Helper.GetUpdatedAppConfigWithLanguageSettings(oldConfigServerPath, appsettingsFile);
+            if (newAppSettingsJson != null)
+            {
+                Helper.WriteToFile(appsettingsFile, newAppSettingsJson);
+            }
+            else
+            {
+                Console.WriteLine("Unable to create appsettings.json file. You must do this manually before deployment");
+            }
+        }
     }
 
     Console.WriteLine();
